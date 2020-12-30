@@ -46,10 +46,10 @@
 #define MAX_NESTING       2048
 
 #define DOUBLE_EPSILON 0.000001
-#define FLOAT_EPSILON 0.00001f
+#define FLOAT_EPSILON 0.00001
 /* do not increase precision without incresing NUM_BUF_SIZE */
 #define DOUBLE_FORMAT "%1.17g"
-#define FLOAT_FORMAT "%1.5f"
+#define FLOAT_FORMAT "%1.10g"
 #define LONG_FORMAT "%ld"
 #define NUM_BUF_SIZE 64 /* double printed with "%1.17g" shouldn't be longer than 25 bytes so let's be paranoid and use 64 */
 
@@ -100,7 +100,6 @@ typedef struct json_number_t {
   unsigned long ulong_val;
   */
   long long_val;
-  float float_val;
 
   JSON_Number_Type type;
 } JSON_Number;
@@ -628,9 +627,9 @@ long json_number_get_long(JSON_Number number) {
     return 0;
 }
 
-float json_number_get_float(JSON_Number number) {
+double json_number_get_float(JSON_Number number) {
     if (json_number_type_has_float(number.type)) {
-      return number.float_val;
+      return number.double_val;
     }
     return 0.f;
 }
@@ -651,9 +650,9 @@ JSON_Status  json_number_set_long(JSON_Number *number, long num_value) {
     return JSONFailure;
 }
 
-JSON_Status  json_number_set_float(JSON_Number *number, float num_value) {
+JSON_Status  json_number_set_float(JSON_Number *number, double num_value) {
     if (NULL != number) {
-        number->float_val = num_value;
+        number->double_val = num_value;
         number->type |= JSONFloat;
         return JSONSuccess;
     }
@@ -980,10 +979,7 @@ static JSON_Value * parse_number_value(const char **string) {
     JSON_Number number = json_number_init_empty();
     errno = 0;
 
-    /*
-     * Try parsing non-floating types first, or this function will fail!
-     */
-
+    /* Try parsing non-floating types first, or this function will fail! */
     /* Try parsing long int */
     number.long_val = strtol(*string, &end, 10);
     if(!errno && (*end != '.')) {
@@ -993,19 +989,11 @@ static JSON_Value * parse_number_value(const char **string) {
         number.long_val = 0;
     }
 
-    /* Try parsing float */
-    number.float_val = strtof(*string, &end);
-    if(!errno && is_decimal(*string, end - *string)) {
-        json_number_set_float(&number, number.float_val);
-    }
-    else {
-        number.float_val = 0.f;
-    }
-
     /* Try parsing double */
     number.double_val = strtod(*string, &end);
     if (!errno && is_decimal(*string, end - *string)) {
         json_number_set_double(&number, number.double_val);
+        json_number_set_float(&number, number.double_val);
     }
     else {
         number.double_val = 0.0;
@@ -1167,7 +1155,7 @@ static int json_serialize_to_buffer_r(const JSON_Value *value, char *buf, int le
                 written = sprintf(num_buf, LONG_FORMAT, num.long_val);
             }
             else if(json_number_type_has_float(num.type)) {
-                written = sprintf(num_buf, FLOAT_FORMAT, num.float_val);
+                written = sprintf(num_buf, FLOAT_FORMAT, num.double_val);
             }
             else if(json_number_type_has_double(num.type)) {
                 written = sprintf(num_buf, DOUBLE_FORMAT, num.double_val);
@@ -1351,7 +1339,7 @@ long json_object_get_number_long(const JSON_Object *object, const char *name) {
     return json_value_get_number_long(json_object_get_value(object, name));
 }
 
-float json_object_get_number_float(const JSON_Object *object, const char *name) {
+double json_object_get_number_float(const JSON_Object *object, const char *name) {
     return json_value_get_number_float(json_object_get_value(object, name));
 }
 
@@ -1392,7 +1380,7 @@ long json_object_dotget_number_long(const JSON_Object *object, const char *name)
     return json_value_get_number_long(json_object_dotget_value(object, name));
 }
 
-float json_object_dotget_number_float(const JSON_Object *object, const char *name) {
+double json_object_dotget_number_float(const JSON_Object *object, const char *name) {
     return json_value_get_number_float(json_object_dotget_value(object, name));
 }
 
@@ -1472,7 +1460,7 @@ long json_array_get_number_long(const JSON_Array *array, size_t index) {
     return json_value_get_number_long(json_array_get_value(array, index));
 }
 
-float json_array_get_number_float(const JSON_Array *array, size_t index) {
+double json_array_get_number_float(const JSON_Array *array, size_t index) {
     return json_value_get_number_float(json_array_get_value(array, index));
 }
 
@@ -1532,7 +1520,7 @@ long json_value_get_number_long(const JSON_Value *value) {
         ? json_number_get_long(value->value.number) : 0;
 }
 
-float json_value_get_number_float(const JSON_Value *value) {
+double json_value_get_number_float(const JSON_Value *value) {
     return json_value_get_type(value) == JSONNumber
         ? json_number_get_float(value->value.number) : 0.f;
 }
@@ -1636,9 +1624,9 @@ JSON_Value * json_value_init_number_long(long number) {
     return json_value_init_number(js_number);
 }
 
-JSON_Value * json_value_init_number_float(float number) {
+JSON_Value * json_value_init_number_float(double number) {
     JSON_Number js_number;
-    js_number.float_val = number;
+    js_number.double_val = number;
     js_number.type = JSONFloat;
     return json_value_init_number(js_number);
 }
@@ -1947,7 +1935,7 @@ JSON_Status json_array_replace_number_long(JSON_Array *array, size_t i, long num
     return JSONSuccess;
 }
 
-JSON_Status json_array_replace_number_float(JSON_Array *array, size_t i, float number) {
+JSON_Status json_array_replace_number_float(JSON_Array *array, size_t i, double number) {
     JSON_Value *value = json_value_init_number_float(number);
     if (value == NULL) {
         return JSONFailure;
@@ -2050,7 +2038,7 @@ JSON_Status json_array_append_number_long(JSON_Array *array, long number) {
     return JSONSuccess;
 }
 
-JSON_Status json_array_append_number_float(JSON_Array *array, float number) {
+JSON_Status json_array_append_number_float(JSON_Array *array, double number) {
     JSON_Value *value = json_value_init_number_float(number);
     if (value == NULL) {
         return JSONFailure;
@@ -2146,7 +2134,7 @@ JSON_Status json_object_set_number_long(JSON_Object *object, const char *name, l
     return status;
 }
 
-JSON_Status json_object_set_number_float(JSON_Object *object, const char *name, float number) {
+JSON_Status json_object_set_number_float(JSON_Object *object, const char *name, double number) {
     JSON_Value *value = json_value_init_number_float(number);
     JSON_Status status = json_object_set_value(object, name, value);
     if (status == JSONFailure) {
@@ -2260,7 +2248,7 @@ JSON_Status json_object_dotset_number_long(JSON_Object *object, const char *name
     return JSONSuccess;
 }
 
-JSON_Status json_object_dotset_number_float(JSON_Object *object, const char *name, float number) {
+JSON_Status json_object_dotset_number_float(JSON_Object *object, const char *name, double number) {
     JSON_Value *value = json_value_init_number_float(number);
     if (value == NULL) {
         return JSONFailure;
@@ -2481,7 +2469,7 @@ long json_number_long(const JSON_Value *value) {
     return json_value_get_number_long(value);
 }
 
-float json_number_float(const JSON_Value *value) {
+double json_number_float(const JSON_Value *value) {
     return json_value_get_number_float(value);
 }
 
