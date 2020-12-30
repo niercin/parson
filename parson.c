@@ -82,9 +82,11 @@ typedef struct json_string {
 enum json_number_type {
   JSONUnknownNumber = 0,
   JSONDouble = 1,
-  // JSONULongLong = 2,
-  // JSONLongLong = 4,
-  // JSONULong = 8,
+  /*
+  JSONULongLong = 2,
+  JSONLongLong = 4,
+  JSONULong = 8,
+  */
   JSONLong =  16,
   JSONFloat = 32
 };
@@ -92,9 +94,11 @@ typedef int JSON_Number_Type;
 
 typedef struct json_number_t {
   double double_val;
-  // unsigned long long ulonglong_val;
-  // long long longlong_val;
-  // unsigned long ulong_val;
+  /*
+  unsigned long long ulonglong_val;
+  long long longlong_val;
+  unsigned long ulong_val;
+  */
   long long_val;
   float float_val;
 
@@ -976,8 +980,11 @@ static JSON_Value * parse_number_value(const char **string) {
     JSON_Number number = json_number_init_empty();
     errno = 0;
 
-    // Try parsing non-floating types first, or this function will fail!
-    // Try parsing long int
+    /*
+     * Try parsing non-floating types first, or this function will fail!
+     */
+
+    /* Try parsing long int */
     number.long_val = strtol(*string, &end, 10);
     if(!errno && (*end != '.')) {
         json_number_set_long(&number, number.long_val);
@@ -986,7 +993,7 @@ static JSON_Value * parse_number_value(const char **string) {
         number.long_val = 0;
     }
 
-    // Try parsing float
+    /* Try parsing float */
     number.float_val = strtof(*string, &end);
     if(!errno && is_decimal(*string, end - *string)) {
         json_number_set_float(&number, number.float_val);
@@ -995,7 +1002,7 @@ static JSON_Value * parse_number_value(const char **string) {
         number.float_val = 0.f;
     }
 
-    // Try parsing double
+    /* Try parsing double */
     number.double_val = strtod(*string, &end);
     if (!errno && is_decimal(*string, end - *string)) {
         json_number_set_double(&number, number.double_val);
@@ -1004,9 +1011,10 @@ static JSON_Value * parse_number_value(const char **string) {
         number.double_val = 0.0;
     }
 
-    // If no type of number information can be parsed in success,
-    // then we should return zero. see. json_number_init_empty()
-    // see. json_number_set_<numtype>
+    /* If no type of number information can be parsed in success,
+     * then we should return zero. see. json_number_init_empty()
+     * see. json_number_set_<numtype>
+     */
     if(JSONUnknownNumber == number.type) {
       return NULL;
     }
@@ -1165,7 +1173,7 @@ static int json_serialize_to_buffer_r(const JSON_Value *value, char *buf, int le
                 written = sprintf(num_buf, DOUBLE_FORMAT, num.double_val);
             }
             else {
-                // If somehow nothing exists as a number, print a "0" instead!
+                /* If somehow nothing exists as a number, print a "0" instead! */
                 json_number_set_long(&num, 0);
                 written = sprintf(num_buf, LONG_FORMAT, num.long_val);
             }
