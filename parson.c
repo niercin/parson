@@ -36,6 +36,7 @@
 #include <ctype.h>
 #include <math.h>
 #include <errno.h>
+#include <float.h>
 
 /* Apparently sscanf is not implemented in some "standard" libraries, so don't use it, if you
  * don't have to. */
@@ -976,7 +977,6 @@ static JSON_Value * parse_number_value(const char **string) {
     errno = 0;
 
     // Try parsing non-floating types first, or this function will fail!
-
     // Try parsing long int
     number.long_val = strtol(*string, &end, 10);
     if(!errno && (*end != '.')) {
@@ -1004,6 +1004,9 @@ static JSON_Value * parse_number_value(const char **string) {
         number.double_val = 0.0;
     }
 
+    // If no type of number information can be parsed in success,
+    // then we should return zero. see. json_number_init_empty()
+    // see. json_number_set_<numtype>
     if(JSONUnknownNumber == number.type) {
       return NULL;
     }
